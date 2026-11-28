@@ -10,6 +10,7 @@ use App\Models\Academy;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Http\Response;
+use App\Models\Student;
 
 class CourseController extends Controller
 {
@@ -94,7 +95,6 @@ class CourseController extends Controller
         return response()->json($course, 200);
     }
 
-
     /**
      * Remove the specified resource from storage.
      */
@@ -110,4 +110,54 @@ class CourseController extends Controller
         return response()->noContent();
     }
 
+        public function students(Course $course): JsonResponse
+    {
+        $students = $course->students()->get();
+
+        return response()->json($students, 200);
+    }
+
+    public function enroll(Request $request, Course $course, Student $student): JsonResponse
+    {
+        if ($course->academy->user_id !== $request->user()->id) {
+            return response()->json([
+                'message' => 'No tienes permiso para matricular estudiantes en este curso.'
+            ], 403);
+        }
+
+        if ($course->students()->where('students.id', $student->id)->exists()) {
+            return response()->json([
+                'message' => 'El estudiante ya está matriculado en este curso.'
+            ], 409);
+        }
+
+        $course->students()->attach($student->id, [
+            'enrolled_at' => now(),
+        ]);
+
+        return response()->json([
+            'message' => 'Estudiante matriculado correctamente.'
+        ], 201);
+    }
+
+    public function unenroll(Request $request, Course $course, Student $student): JsonResponse
+    {
+        if ($course->academy->user_id !== $request->user()->id) {
+            return response()->json([
+                'message' => 'No tienes permiso para desmatricular estudiantes de este curso.'
+            ], 403);
+        }
+
+        if (!$course->students()->where('students.id', $student->id)->exists()) {
+            return response()->json([
+                'message' => 'El estudiante no está matriculado en este curso.'
+            ], 404);
+        }
+
+        $course->students()->detach($student->id);
+
+        return response()->json([
+            'message' => 'Estudiante desmatriculado correctamente.'
+        ], 200);
+    }
 }

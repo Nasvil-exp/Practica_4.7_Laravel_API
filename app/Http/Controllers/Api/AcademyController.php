@@ -85,4 +85,10 @@ class AcademyController extends Controller
 
         return response()->noContent();
     }
+        public function courses(Academy $academy): JsonResponse
+    {
+        $courses = $academy->courses()->get();
+
+        return response()->json($courses, 200);
+    }
 }
